@@ -13,59 +13,58 @@
     <div id="counter">0</div>
     <script>
      document.addEventListener("DOMContentLoaded", function(event) {
-        var idel = document.getElementById('idel');
-        var count = document.getElementById('counter');
-        var inc = document.getElementById("inc");
-        var dec = document.getElementById("dec");
+       var idel = document.getElementById('idel');
+       var count = document.getElementById('counter');
+       var inc = document.getElementById("inc");
+       var dec = document.getElementById("dec");
 
-        function getCurrent() {
-          return parseInt(count.innerHTML, 10);
-        }
+       function getCurrent() {
+         return parseInt(count.innerHTML, 10);
+       }
 
-        var id;
-        var connected = false;
-        var worker;
+       var connected = false;
+       var worker;
 
-        setTimeout(function() {
-           worker = new SharedWorker("worker.js");
+       setTimeout(function() {
+         worker = new SharedWorker("worker.js");
 
-           worker.onerror = function() {
-               console.log('error', arguments);
+         worker.onerror = function() {
+           console.log('error', arguments);
+         }
+
+         worker.port.onmessage = function(ev) {
+           console.log(ev.data);
+           if(!connected && ev.data.status === "connected") {
+             window.connectionid = ev.data.id;
+             connected = true;
+             idel.innerHTML = window.connnectionid + " " + connected;
+           } else {
+             count.innerHTML = ev.data.payload;
            }
+         }
 
-           worker.port.onmessage = function(ev) {
-               console.log(ev.data);
-               if(ev.data.status === "connected") {
-                 id = ev.data.id;
-                 connected = true;
-                 idel.innerHTML = id + " " + connected;
-               } else {
-                  count.innerHTML = ev.data.payload;
-               }
-           }
+         window.addEventListener('unload', function(event) {
+           worker.port.postMessage({ status: "close", id: window.connectionid });
+         });
+       }, 1);
 
-            window.addEventListener('unload', function(event) {
-              worker.port.postMessage({ status: "close", id: id });
-            });
-        }, 1);
+       inc.onclick = function(el) {
+         var next = getCurrent() + 1;
+         if(connected) {
+           worker.port.postMessage(next);
+         } else {
+           worker = init();
+         }
+       }
 
-        inc.onclick = function(el) {
-          var next = getCurrent() + 1;
-          if(connected) {
-              worker.port.postMessage(next);
-          } else {
-              worker = init();
-          }
-        }
-
-        dec.onclick = function(el) {
-          var prev = getCurrent() - 1;
-          if(connected) {
-              worker.port.postMessage(prev);
-          } else {
-              worker = init();
-          }
-        }
+       dec.onclick = function(el) {
+         var prev = getCurrent() - 1;
+         if(connected) {
+           worker.port.postMessage(prev);
+         } else {
+           worker = init();
+         }
+       }
      });
     </script>
   </body>

@@ -1,29 +1,38 @@
-var Connections = {
+Connections = {
   count: 0,
   ports: {}
 };
 
+function broadcast(msg) {
+  Object.keys(Connections.ports).forEach(function (pid) {
+    Connections.ports[pid].postMessage(msg);
+  });
+}
+
+function newid() {
+  return Math.floor(new Date().getTime() * Math.random());
+}
+
 onconnect = function(oev) {
   var port = oev.ports[0];
-  var id = Connections.count;
+  var id = newid();
   Connections.ports[id] = port;
   Connections.count++;
 
-  Object.keys(Connections.ports).forEach(function(cid) {
-    Connections.ports[cid].postMessage({ status: "connected", id: id, ports: Object.keys(Connections.ports).length });
+  broadcast({
+    id: id,
+    status: "connected",
+    count: Connections.count,
+    keys: Object.keys(Connections.ports)
   });
 
   port.onmessage = function(iev) {
     if(iev.data.status === "close") {
       delete Connections.ports[iev.data.id];
-      
-      Object.keys(Connections.ports).forEach(function(cid) {
-        Connections.ports[cid].postMessage({ status: "closed", id: iev.data.id });
-      });
+      Connections.count--;
+      broadcast({ status: "closed", id: iev.data.id });
     } else {
-      Object.keys(Connections.ports).forEach(function(cid) {
-        Connections.ports[cid].postMessage({ payload: iev.data });
-      });
+      broadcast({ payload: iev.data });
     }
   };
 };
